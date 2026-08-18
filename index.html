@@ -356,18 +356,6 @@
 
     <div style="font-size:13px; font-weight:700; margin:14px 0 6px;">ภาพถ่ายประกอบ (<span id="rpPhotoCount">0</span> ภาพ)</div>
     <div id="rpPhotos" style="display:grid; grid-template-columns:repeat(3,1fr); gap:8px;"></div>
-
-    <div style="display:flex; justify-content:space-around; margin-top:30px; font-size:12px; color:#475569;">
-      <div style="text-align:center;">
-        <div style="border-bottom:1px dotted #94A3B8; width:190px; height:30px;"></div>
-        <div style="margin-top:4px;">ผู้ตรวจเช็ค</div>
-        <div style="font-size:11px; color:#94A3B8;">(<span id="rpSignName">-</span>)</div>
-      </div>
-      <div style="text-align:center;">
-        <div style="border-bottom:1px dotted #94A3B8; width:190px; height:30px;"></div>
-        <div style="margin-top:4px;">หัวหน้าแผนก / ผู้ตรวจสอบ</div>
-        <div style="font-size:11px; color:#94A3B8;">(...................................)</div>
-      </div>
     </div>
   </div>
 </div>
@@ -565,6 +553,7 @@ const state = {
   reportSource: 'form',   // 'form' = ใบรายงานจากข้อมูลที่กำลังกรอก | 'record' = ใบย้อนหลัง
   reportRecordId: '',
   photoCache: {},         // ภาพย้อนหลังที่โหลดมาแล้ว (คีย์ = Log_ID) ไม่ต้องดึงซ้ำ
+  photoLoading: false,
   history: [],            // รายการที่บันทึกแล้ว (แคชไว้ใช้ซ้ำ)
   histPage: 1,
   histPageSize: 10,
@@ -1359,7 +1348,6 @@ function buildReportFromRecord(r) {
   $('rpRoomType').textContent = r.roomType || '-';
   $('rpFloor').textContent = r.floor || '-';
   $('rpZone').textContent = r._zone || '-';
-  $('rpSignName').textContent = r.inspector || '-';
 
   $('rpItems').innerHTML = CONFIG.ITEMS.map((it, i) => {
     const v = String(r[it.key] || '').trim();
@@ -1390,6 +1378,12 @@ function buildReportFromRecord(r) {
         <img src="${src}" style="width:100%; height:100%; object-fit:cover;">
         <span style="position:absolute; left:4px; bottom:4px; background:rgba(0,0,0,.6); color:#fff; font-size:10px; padding:1px 5px; border-radius:3px;">ภาพที่ ${i + 1}</span>
       </div>`).join('');
+  } else if (r._photoLoading) {
+    // เปิดใบรายงานให้ดูได้ทันที แล้วค่อยเติมภาพเมื่อโหลดเสร็จ ผู้ใช้จึงไม่รู้สึกว่าค้าง
+    $('rpPhotos').innerHTML = Array.from({ length: r._images.length }).map((_, i) => `
+      <div style="border:1px dashed #CBD5E1; border-radius:6px; height:150px; display:flex; align-items:center; justify-content:center; background:#F8FAFC; color:#94A3B8; font-size:11px;">
+        กำลังโหลดภาพที่ ${i + 1}…
+      </div>`).join('');
   } else if (r._images.length) {
     $('rpPhotos').innerHTML = `<div style="grid-column:span 3; font-size:11px; color:#334155; line-height:1.8; word-break:break-all;">
         <div style="color:#B45309; margin-bottom:4px;">* โหลดภาพจาก Google Drive ไม่สำเร็จ จึงแสดงเป็นลิงก์แทน</div>
@@ -1404,37 +1398,63 @@ async function openRecordReport(logId) {
   const r = state.history.filter((x) => x.logId === logId)[0];
   if (!r) { toast('error', 'ไม่พบรายการนี้ กรุณากดรีเฟรช'); return; }
 
-  // ดึงภาพจริงมาฝังในใบรายงาน เพื่อให้ใบย้อนหลังสมบูรณ์เท่าใบที่ออกตอนบันทึก
-  if (r._images.length && !Array.isArray(r._photoData)) {
-    if (state.photoCache[logId]) {
-      r._photoData = state.photoCache[logId];
-    } else {
-      Swal.fire({
-        title: 'กำลังโหลดภาพถ่าย…',
-        html: `<span style="font-size:13px;color:#64748B">${r._images.length} ภาพจาก Google Drive</span>`,
-        allowOutsideClick: false, didOpen: () => Swal.showLoading()
-      });
-      try {
-        const res = await apiGetPhotos(logId);
-        if (res && res.status === 'error') throw new Error(res.message);
-        r._photoData = (res && res.images) ? res.images : [];
-        state.photoCache[logId] = r._photoData;
-        Swal.close();
-        if (res && res.failed > 0) toast('warning', `โหลดภาพไม่ได้ ${res.failed} ภาพ`);
-      } catch (err) {
-        Swal.close();
-        // ยังเปิดใบรายงานต่อได้ เพียงแต่ส่วนภาพจะเป็นลิงก์แทน
-        r._photoData = [];
-        toast('warning', 'โหลดภาพไม่สำเร็จ — ใบรายงานจะแสดงเป็นลิงก์ภาพแทน');
+  state.reportSource = 'record';
+  state.reportRecordId = r.logId;
+
+  const needPhotos = r._images.length && !Array.isArray(r._photoData);
+  if (needPhotos && state.photoCache[logId]) r._photoData = state.photoCache[logId];
+
+  const stillNeed = r._images.length && !Array.isArray(r._photoData);
+  r._photoLoading = !!stillNeed;
+  state.photoLoading = !!stillNeed;
+
+  // แสดงใบรายงานทันที (ช่องภาพเป็นกรอบ "กำลังโหลด") แล้วค่อยเติมภาพเมื่อได้ข้อมูล
+  buildReportFromRecord(r);
+  const closed = openPreview('view');
+
+  if (stillNeed) {
+    try {
+      const res = await apiGetPhotos(logId);
+      if (res && res.status === 'error') throw new Error(res.message);
+      r._photoData = (res && res.images) ? res.images : [];
+      state.photoCache[logId] = r._photoData;
+      if (res && res.failed > 0) toast('warning', `โหลดภาพไม่ได้ ${res.failed} ภาพ`);
+    } catch (err) {
+      r._photoData = [];   // ใบรายงานยังใช้ได้ เพียงแต่ส่วนภาพจะเป็นลิงก์แทน
+      toast('warning', 'โหลดภาพไม่สำเร็จ — ใบรายงานจะแสดงเป็นลิงก์ภาพแทน');
+    } finally {
+      r._photoLoading = false;
+      state.photoLoading = false;
+      // ผู้ใช้อาจปิดใบไปแล้วระหว่างรอ จึงอัปเดตเฉพาะเมื่อยังเปิดใบเดิมอยู่
+      if (state.reportRecordId === logId && !$('previewModal').classList.contains('hidden')) {
+        buildReportFromRecord(r);
+        refreshPreviewClone();
       }
     }
   }
 
-  state.reportSource = 'record';
-  state.reportRecordId = r.logId;
-  buildReportFromRecord(r);
-  await openPreview('view');
+  await closed;
   state.reportSource = 'form';   // กลับสู่โหมดปกติหลังปิดพรีวิว
+}
+
+/** วาดสำเนาใบรายงานในหน้าต่างพรีวิวใหม่ (ใช้ตอนภาพโหลดเสร็จระหว่างเปิดดูอยู่) */
+function refreshPreviewClone() {
+  const stage = $('previewStage');
+  const old = document.getElementById('previewClone');
+  if (!old) return;
+  const scroll = $('previewScroll').scrollTop;
+
+  const clone = document.createElement('div');
+  clone.id = 'previewClone';
+  clone.style.width = '794px';
+  clone.style.background = '#fff';
+  clone.innerHTML = $('reportSheet').innerHTML;
+  clone.querySelectorAll('[id]').forEach((el) => el.removeAttribute('id'));
+
+  stage.innerHTML = '';
+  stage.appendChild(clone);
+  scalePreview();
+  $('previewScroll').scrollTop = scroll;   // คงตำแหน่งที่ผู้ใช้เลื่อนอ่านค้างไว้
 }
 
 function openHistory() {
@@ -1463,7 +1483,6 @@ function buildReportSheet(payload) {
   $('rpRoomType').textContent = payload.roomType || '-';
   $('rpFloor').textContent = payload.floor || '-';
   $('rpZone').textContent = payload.zone || '-';
-  $('rpSignName').textContent = payload.inspector || '-';
 
   $('rpItems').innerHTML = CONFIG.ITEMS.map((it, i) => {
     const v = vals[i] || '-';
@@ -1617,11 +1636,32 @@ function reportBaseName() {
 }
 
 /** เรนเดอร์ใบรายงานเป็นภาพ (ใช้ร่วมกันทุกฟอร์แมต จึงเรนเดอร์ครั้งเดียว) */
+/**
+ * รอให้ภาพในกล่องที่ระบุโหลดครบก่อน capture
+ * เดิมใช้การหน่วงตายตัว 400ms ซึ่งช้าเกินจำเป็นเมื่อภาพพร้อมแล้ว
+ * และสั้นเกินไปเมื่อภาพใหญ่ — วิธีนี้รอเท่าที่จำเป็นจริง (สูงสุด 5 วินาที)
+ */
+function waitForImages(box, timeoutMs) {
+  const imgs = Array.from(box.querySelectorAll('img'));
+  const pending = imgs.filter((im) => !im.complete || im.naturalWidth === 0);
+  if (!pending.length) return new Promise((r) => requestAnimationFrame(() => r()));
+
+  return new Promise((resolve) => {
+    let left = pending.length;
+    const done = () => { if (--left <= 0) resolve(); };
+    pending.forEach((im) => {
+      im.addEventListener('load', done, { once: true });
+      im.addEventListener('error', done, { once: true });
+    });
+    setTimeout(resolve, timeoutMs || 5000);   // ไม่ปล่อยให้ค้างถ้ามีภาพเสีย
+  });
+}
+
 /** เรนเดอร์ใบรายงานที่ "สร้างไว้แล้ว" เป็นภาพ — ผู้เรียกต้อง build ใบรายงานก่อน */
 async function renderReportCanvas() {
   // รอฟอนต์ไทยและรูปโหลดครบก่อน capture ไม่งั้นตัวอักษรเพี้ยน/ภาพหาย
   if (document.fonts && document.fonts.ready) { try { await document.fonts.ready; } catch (e) {} }
-  await new Promise((r) => setTimeout(r, 400));
+  await waitForImages($('reportSheet'));   // รอเฉพาะเท่าที่ภาพยังโหลดไม่เสร็จจริงๆ
   // มือถือรุ่นเล็กหน่วยความจำจำกัด ลดความละเอียดลงเพื่อไม่ให้แท็บแครช
   const scale = (isTouchDevice() && window.innerWidth < 480) ? 1.6 : 2;
   return html2canvas($('reportSheet'), { scale, backgroundColor: '#FFFFFF', useCORS: true, logging: false });
@@ -1664,6 +1704,11 @@ async function exportReport(type) {
       return;
     }
     buildReportSheet(payload);
+  }
+
+  if (state.photoLoading) {
+    toast('info', 'กำลังโหลดภาพถ่าย กรุณารอสักครู่แล้วกดใหม่');
+    return;
   }
 
   const types = (type === 'all') ? ['pdf', 'png', 'jpeg'] : [type];
