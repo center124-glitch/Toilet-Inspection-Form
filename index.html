@@ -25,10 +25,10 @@
   body {
     font-family:'Sarabun', sans-serif; line-height:1.7; color:#1E293B;
     background:
-      radial-gradient(900px 480px at 8% -8%,  rgba(56,189,248,.22), transparent 60%),
-      radial-gradient(760px 420px at 105% 4%, rgba(244,169,63,.20), transparent 58%),
-      radial-gradient(820px 520px at 50% 108%, rgba(5,150,105,.16), transparent 62%),
-      linear-gradient(180deg,#F4F8FF 0%,#F7FAFC 45%,#EFFAFB 100%);
+      radial-gradient(900px 480px at 8% -8%,  rgba(56,189,248,.24), transparent 60%),
+      radial-gradient(760px 420px at 105% 4%, rgba(244,169,63,.22), transparent 58%),
+      radial-gradient(820px 520px at 50% 108%, rgba(5,150,105,.18), transparent 62%),
+      linear-gradient(180deg,#F2F7FF 0%,#F7FAFC 45%,#ECFAFB 100%);
     background-attachment: fixed;
   }
   .card {
@@ -53,6 +53,46 @@
   * { -webkit-tap-highlight-color: transparent; }
   html { -webkit-text-size-adjust: 100%; }
   body { overscroll-behavior-y: contain; }
+
+  /* ---------- ม่านแสงเคลื่อนไหวเบาๆ ด้านหลัง ----------
+     วางบน ::before ของ body และ pointer-events:none จึงไม่ขวางการกดปุ่มบนมือถือ */
+  body::before {
+    content:''; position:fixed; inset:-20%; z-index:-1; pointer-events:none;
+    background:
+      radial-gradient(400px 400px at 16% 24%, rgba(14,116,144,.16), transparent 62%),
+      radial-gradient(360px 360px at 84% 16%, rgba(244,169,63,.15), transparent 62%),
+      radial-gradient(440px 440px at 60% 86%, rgba(5,150,105,.13), transparent 62%);
+    filter:blur(18px);
+    animation:auroraFloat 26s ease-in-out infinite alternate;
+  }
+  @keyframes auroraFloat {
+    0%   { transform:translate3d(0,0,0) scale(1); }
+    50%  { transform:translate3d(-2.2%,1.8%,0) scale(1.05); }
+    100% { transform:translate3d(2.4%,-1.6%,0) scale(1.02); }
+  }
+
+  /* ---------- ยูทิลิตี้เสริมที่ไม่ได้อยู่ในไฟล์ Tailwind ที่คอมไพล์ไว้ ---------- */
+  .font-semibold  { font-weight:600; }
+  .pb-2           { padding-bottom:.5rem; }
+  .-mt-1          { margin-top:-.25rem; }
+  .text-cyan-700  { color:#0E7490; }
+  .min-w-\[140px\]{ min-width:140px; }
+
+  /* ---------- แถบตัวกรองประวัติแบบพับเก็บได้ ---------- */
+  /* grid-template-rows แทน max-height เพราะจำนวนช่องเปลี่ยนตามโหมดที่เลือก
+     การเดาความสูงไว้ล่วงหน้าจะทำให้เนื้อหาโดนตัด */
+  .hf-body {
+    display:grid; grid-template-rows:1fr; opacity:1;
+    transition:grid-template-rows .3s cubic-bezier(.4,0,.2,1), opacity .2s ease;
+  }
+  .hf-body > div { overflow:hidden; }
+  .hf-body.collapsed { grid-template-rows:0fr; opacity:0; }
+  #histFltChevron.rot { transform:rotate(180deg); }
+
+  @media (prefers-reduced-motion: reduce) {
+    body::before { animation:none; }
+    .hf-body { transition:none; }
+  }
   /* เผื่อพื้นที่รอยบาก/แถบล่างของ iPhone และ Android รุ่นจอเต็ม */
   /* เผื่อพื้นที่รอยบาก/แถบสถานะ พร้อมกำหนดขั้นต่ำไว้เสมอ
      เพราะบางเบราว์เซอร์ในโหมดปกติคืนค่า env() เป็น 0 ทำให้หัวเมนูชิดขอบบนจนกดยาก */
@@ -384,22 +424,48 @@
       </div>
     </div>
 
-    <div class="bg-white/95 border-b border-slate-200 p-3 flex flex-wrap gap-2">
-      <div class="relative flex-1 min-w-[180px]">
-        <i data-lucide="search" class="w-4 h-4 absolute left-3 top-3 text-slate-400"></i>
-        <input id="histSearch" type="text" placeholder="ค้นหา: รหัส, ชั้น, โซน, ผู้ตรวจ…"
-               class="w-full border border-slate-300 rounded-lg pl-9 pr-3 py-2 text-sm">
+    <div id="histFilterBar" class="bg-white/95 border-b border-slate-200">
+      <div class="p-3 flex gap-2">
+        <div class="relative flex-1 min-w-0">
+          <i data-lucide="search" class="w-4 h-4 absolute left-3 top-3 text-slate-400"></i>
+          <input id="histSearch" type="text" placeholder="ค้นหา: รหัส, ชั้น, โซน, ผู้ตรวจ…"
+                 class="w-full border border-slate-300 rounded-lg pl-9 pr-3 py-2 text-sm">
+        </div>
+        <button id="histFltToggle" type="button"
+                class="shrink-0 flex items-center gap-1.5 border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white text-slate-600">
+          <i data-lucide="sliders-horizontal" class="w-4 h-4"></i>
+          <span>ตัวกรอง</span>
+          <i data-lucide="chevron-down" id="histFltChevron" class="w-4 h-4 text-slate-400" style="transition:transform .3s ease;"></i>
+        </button>
       </div>
-      <select id="histScope" class="border border-slate-300 rounded-lg px-2 py-2 text-sm bg-white">
-        <option value="mine">เฉพาะของฉัน</option>
-        <option value="today">เฉพาะวันนี้</option>
-        <option value="all">ทั้งหมด</option>
-      </select>
-      <select id="histPageSize" class="border border-slate-300 rounded-lg px-2 py-2 text-sm bg-white">
-        <option value="10">10 แถว/หน้า</option>
-        <option value="25">25 แถว/หน้า</option>
-        <option value="50">50 แถว/หน้า</option>
-      </select>
+
+      <div id="histFltSummary" class="px-3 pb-2 -mt-1 text-[11px] text-cyan-700 truncate"></div>
+
+      <div id="histFltBody" class="hf-body collapsed"><div>
+        <div class="px-3 pb-3">
+          <div class="flex flex-wrap gap-2 mb-2">
+            <button type="button" class="hist-mode text-xs font-semibold px-3 py-1.5 rounded-full border-2 border-slate-200 bg-white text-slate-500" data-mode="latest">วันล่าสุด</button>
+            <button type="button" class="hist-mode text-xs font-semibold px-3 py-1.5 rounded-full border-2 border-slate-200 bg-white text-slate-500" data-mode="day">รายวัน</button>
+            <button type="button" class="hist-mode text-xs font-semibold px-3 py-1.5 rounded-full border-2 border-slate-200 bg-white text-slate-500" data-mode="month">รายเดือน</button>
+            <button type="button" class="hist-mode text-xs font-semibold px-3 py-1.5 rounded-full border-2 border-slate-200 bg-white text-slate-500" data-mode="year">รายปี</button>
+            <button type="button" class="hist-mode text-xs font-semibold px-3 py-1.5 rounded-full border-2 border-slate-200 bg-white text-slate-500" data-mode="all">ทั้งหมด</button>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <input id="histDay" type="date" class="hidden border border-slate-300 rounded-lg px-2 py-2 text-sm">
+            <input id="histMonth" type="month" class="hidden border border-slate-300 rounded-lg px-2 py-2 text-sm">
+            <select id="histYear" class="hidden border border-slate-300 rounded-lg px-2 py-2 text-sm bg-white"></select>
+            <select id="histScope" class="border border-slate-300 rounded-lg px-2 py-2 text-sm bg-white">
+              <option value="mine">เฉพาะของฉัน</option>
+              <option value="all">ทุกคน</option>
+            </select>
+            <select id="histPageSize" class="border border-slate-300 rounded-lg px-2 py-2 text-sm bg-white">
+              <option value="10">10 แถว/หน้า</option>
+              <option value="25">25 แถว/หน้า</option>
+              <option value="50">50 แถว/หน้า</option>
+            </select>
+          </div>
+        </div>
+      </div></div>
     </div>
 
     <div id="histScroll" class="flex-1 overflow-auto p-3 bg-slate-50">
@@ -570,6 +636,8 @@ const state = {
   history: [],            // รายการที่บันทึกแล้ว (แคชไว้ใช้ซ้ำ)
   histPage: 1,
   histPageSize: 10,
+  histMode: 'latest',    // latest | day | month | year | all
+  histFltTimer: null,    // ตัวจับเวลาพับตัวกรองเก็บอัตโนมัติ
   historyAt: 0,
   historyLoading: false,
   introTimer: null,
@@ -1234,6 +1302,7 @@ function mkDate(y, mo, d, h, mi, sec) {
 async function loadHistory(force) {
   if (state.historyLoading) return;
   if (!force && state.history.length && (Date.now() - state.historyAt) < HISTORY_TTL_MS) {
+    refreshHistFilterUI();
     renderHistory();
     return;
   }
@@ -1268,6 +1337,7 @@ async function loadHistory(force) {
 
     state.history = rows;
     state.historyAt = Date.now();
+    refreshHistFilterUI();   // ตัวเลือกปี/ข้อความสรุป ต้องอิงข้อมูลชุดที่เพิ่งโหลดมา
     renderHistory();
   } catch (err) {
     $('histContent').classList.add('hidden');
@@ -1280,19 +1350,152 @@ async function loadHistory(force) {
   }
 }
 
+/** เรียกหลังข้อมูลประวัติเข้ามาแล้ว เพื่อให้ตัวเลือกปีและข้อความสรุปตรงกับข้อมูลจริง */
+function refreshHistFilterUI() {
+  buildHistYears();
+  paintHistMode();
+}
+
+/* ---------- ตัวกรองช่วงเวลาของหน้าประวัติ ----------
+   ทุกโหมดถูกแปลงเป็นช่วง [from, to] ชุดเดียว แล้วค่อยนำไปกรอง
+   ทำให้เพิ่มโหมดใหม่ในอนาคตแก้ที่ฟังก์ชันเดียว */
+
+/** วันที่ล่าสุดที่มีข้อมูลจริง (ไม่ใช่ "วันนี้" เพราะบางวันอาจยังไม่มีการตรวจ) */
+function latestHistoryDay() {
+  for (let i = 0; i < state.history.length; i++) {
+    if (state.history[i]._d) return state.history[i]._d;
+  }
+  return nowTH();
+}
+
+/** @return {{from: Date|null, to: Date|null}} */
+function historyPeriod() {
+  const m = state.histMode;
+  if (m === 'all') return { from: null, to: null };
+
+  const dayBounds = (d) => ({
+    from: new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0),
+    to: new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59)
+  });
+
+  if (m === 'latest') return dayBounds(latestHistoryDay());
+  if (m === 'day') {
+    const v = $('histDay').value;
+    const d = v ? new Date(v + 'T00:00:00') : latestHistoryDay();
+    return dayBounds(isNaN(d.getTime()) ? latestHistoryDay() : d);
+  }
+  if (m === 'month') {
+    let v = $('histMonth').value;
+    if (!v) { const d = latestHistoryDay(); v = `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`; }
+    const y = +v.slice(0, 4), mo = +v.slice(5, 7);
+    if (!y || !mo) return { from: null, to: null };
+    // วันสุดท้ายของเดือน = "วันที่ 0 ของเดือนถัดไป" รองรับปีอธิกสุรทินอัตโนมัติ
+    return { from: new Date(y, mo - 1, 1, 0, 0, 0), to: new Date(y, mo, 0, 23, 59, 59) };
+  }
+  if (m === 'year') {
+    const y = +($('histYear').value || latestHistoryDay().getFullYear());
+    return { from: new Date(y, 0, 1, 0, 0, 0), to: new Date(y, 11, 31, 23, 59, 59) };
+  }
+  return { from: null, to: null };
+}
+
+/**
+ * ลำดับการบันทึกจริงที่ซ่อนอยู่ในรหัสรายการ (INS-YYYYMMDD-NNN -> NNN)
+ * ใช้ตัดสินลำดับเมื่อสองรายการมีเวลาบันทึกตรงกันถึงระดับนาที
+ */
+function logSeq(r) {
+  const m = String(r && r.logId ? r.logId : '').match(/-(\d+)$/);
+  return m ? parseInt(m[1], 10) : 0;
+}
+
 function historyRows() {
   const q = $('histSearch').value.trim().toLowerCase();
   const scope = $('histScope').value;
   const me = currentInspector();
-  const todayKey = dayKeyOf(nowTH());
+  const period = historyPeriod();
 
   return state.history.filter((r) => {
     if (scope === 'mine' && me && r.inspector !== me) return false;
-    if (scope === 'today' && dayKeyOf(r._d) !== todayKey) return false;
+    if (period.from && r._d < period.from) return false;
+    if (period.to && r._d > period.to) return false;
     if (!q) return true;
     return [r.logId, r.inspector, r.roomType, r.floor, r._zone, r._overall, r.remarks]
       .join(' ').toLowerCase().indexOf(q) >= 0;
+  // รายการล่าสุดอยู่บรรทัดแรกเสมอ เวลาเท่ากันให้ดูเลขลำดับท้ายรหัสเป็นตัวตัดสิน
+  }).sort((a, b) => (b._d - a._d) || (logSeq(b) - logSeq(a)));
+}
+
+/** ไฮไลต์ปุ่มโหมด + แสดงเฉพาะช่องกรอกที่เกี่ยวข้อง */
+function paintHistMode() {
+  const m = state.histMode;
+  document.querySelectorAll('.hist-mode').forEach((b) => {
+    const on = b.dataset.mode === m;
+    b.classList.toggle('border-brand', on);
+    b.classList.toggle('bg-cyan-50', on);
+    b.classList.toggle('text-brand', on);
+    b.classList.toggle('border-slate-200', !on);
+    b.classList.toggle('text-slate-500', !on);
   });
+  $('histDay').classList.toggle('hidden', m !== 'day');
+  $('histMonth').classList.toggle('hidden', m !== 'month');
+  $('histYear').classList.toggle('hidden', m !== 'year');
+  updateHistSummary();
+}
+
+function updateHistSummary() {
+  const m = state.histMode;
+  const p = historyPeriod();
+  let txt = 'ทุกช่วงเวลา';
+  if (m === 'latest') txt = 'วันล่าสุด: ' + fmtThaiDate(p.from);
+  else if (m === 'day') txt = fmtThaiDate(p.from);
+  else if (m === 'month') txt = p.from ? `เดือน ${TH_MONTHS[p.from.getMonth()]} ${p.from.getFullYear() + 543}` : 'รายเดือน';
+  else if (m === 'year') txt = p.from ? `ปี ${p.from.getFullYear() + 543}` : 'รายปี';
+  const who = $('histScope').value === 'mine' ? 'เฉพาะของฉัน' : 'ทุกคน';
+  $('histFltSummary').textContent = `${txt} · ${who}`;
+}
+
+function setHistMode(mode) {
+  state.histMode = mode;
+  // เติมค่าเริ่มต้นให้ช่องกรอก เพื่อไม่ให้ผู้ใช้เจอช่องว่างแล้วไม่รู้ว่าต้องกรอกอะไร
+  const d = latestHistoryDay();
+  if (mode === 'day' && !$('histDay').value) $('histDay').value = `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+  if (mode === 'month' && !$('histMonth').value) $('histMonth').value = `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`;
+  paintHistMode();
+  state.histPage = 1;
+  renderHistory();
+}
+
+/** สร้างตัวเลือกปีจากปีที่มีข้อมูลจริง (แสดงเป็น พ.ศ.) */
+function buildHistYears() {
+  const years = Array.from(new Set(state.history.map((r) => r._d && r._d.getFullYear()).filter(Boolean)))
+    .sort((a, b) => b - a);
+  const sel = $('histYear'); const keep = sel.value;
+  sel.innerHTML = '';
+  years.forEach((y) => {
+    const o = document.createElement('option');
+    o.value = String(y); o.textContent = 'พ.ศ. ' + (y + 543);
+    sel.appendChild(o);
+  });
+  if (keep && years.indexOf(+keep) >= 0) sel.value = keep;
+}
+
+/* ---------- พับ/กางแถบตัวกรอง ---------- */
+const isHistFltOpen = () => !$('histFltBody').classList.contains('collapsed');
+function setHistFltOpen(open) {
+  $('histFltBody').classList.toggle('collapsed', !open);
+  $('histFltChevron').classList.toggle('rot', open);
+  if (open) armHistFltAutoHide(); else clearTimeout(state.histFltTimer);
+}
+/**
+ * พับเก็บเองเมื่อไม่ได้แตะ 12 วินาที
+ * หน้าจอมือถือมีพื้นที่จำกัด การเก็บแถบตัวกรองคืนพื้นที่ให้รายการประวัติได้อีกหลายบรรทัด
+ */
+function armHistFltAutoHide() {
+  clearTimeout(state.histFltTimer);
+  state.histFltTimer = setTimeout(() => {
+    if ($('histFilterBar').contains(document.activeElement)) { armHistFltAutoHide(); return; }
+    setHistFltOpen(false);
+  }, 12000);
 }
 const dayKeyOf = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 
@@ -1892,7 +2095,19 @@ function bindEvents() {
   $('btnHistClose').addEventListener('click', closeHistory);
   $('btnHistRefresh').addEventListener('click', () => loadHistory(true));
   $('histSearch').addEventListener('input', () => { state.histPage = 1; renderHistory(); });
-  $('histScope').addEventListener('change', () => { state.histPage = 1; renderHistory(); });
+  $('histScope').addEventListener('change', () => { state.histPage = 1; updateHistSummary(); renderHistory(); });
+
+  // ---- ตัวกรองช่วงเวลาของประวัติ ----
+  $('histFltToggle').addEventListener('click', () => setHistFltOpen(!isHistFltOpen()));
+  ['click', 'change', 'input', 'focusin'].forEach((ev) => {
+    $('histFilterBar').addEventListener(ev, () => { if (isHistFltOpen()) armHistFltAutoHide(); });
+  });
+  document.querySelectorAll('.hist-mode').forEach((b) => {
+    b.addEventListener('click', () => setHistMode(b.dataset.mode));
+  });
+  ['histDay', 'histMonth', 'histYear'].forEach((id) => {
+    $(id).addEventListener('change', () => { state.histPage = 1; updateHistSummary(); renderHistory(); });
+  });
   $('histPageSize').addEventListener('change', (e) => {
     state.histPageSize = parseInt(e.target.value, 10) || 10;
     state.histPage = 1;
