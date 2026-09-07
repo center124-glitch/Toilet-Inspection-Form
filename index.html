@@ -234,7 +234,7 @@
   <!-- รายการตรวจเช็ค -->
   <div class="card card-accent acc-emerald p-4 sm:p-6 mb-4">
     <h2 class="font-bold text-lg flex items-center gap-2 mb-4 pb-3 border-b border-slate-100">
-      <span class="chip-ico bg-emerald-100 text-emerald-700"><i data-lucide="list-checks" class="w-4 h-4"></i></span> รายการตรวจเช็ค (3 รายการ)
+      <span class="chip-ico bg-emerald-100 text-emerald-700"><i data-lucide="list-checks" class="w-4 h-4"></i></span> รายการตรวจเช็ค (<span id="chkCount">7</span> รายการ)
     </h2>
     <div id="checklistWrap" class="space-y-4"></div>
 
@@ -337,27 +337,28 @@
       </tr>
     </table>
 
-    <div style="font-size:14px; font-weight:700; margin:16px 0 6px;">ผลการตรวจเช็ค</div>
-    <table style="width:100%; border-collapse:collapse; font-size:13px;">
+    <!-- ตารางผลการตรวจ 7 ข้อ — ลด padding ลงจากเดิม เพื่อให้ใบรายงานยังพอดีกระดาษ A4 แผ่นเดียว -->
+    <div style="font-size:14px; font-weight:700; margin:13px 0 5px;">ผลการตรวจเช็ค</div>
+    <table style="width:100%; border-collapse:collapse; font-size:12.5px;">
       <thead>
         <tr style="background:#1E293B; color:#fff;">
-          <th style="border:1px solid #1E293B; padding:7px 10px; width:36px;">ที่</th>
-          <th style="border:1px solid #1E293B; padding:7px 10px; text-align:left;">รายการตรวจเช็ค</th>
-          <th style="border:1px solid #1E293B; padding:7px 10px; width:170px;">ผลการตรวจ</th>
+          <th style="border:1px solid #1E293B; padding:5px 10px; width:36px;">ที่</th>
+          <th style="border:1px solid #1E293B; padding:5px 10px; text-align:left;">รายการตรวจเช็ค</th>
+          <th style="border:1px solid #1E293B; padding:5px 10px; width:170px;">ผลการตรวจ</th>
         </tr>
       </thead>
       <tbody id="rpItems"></tbody>
     </table>
 
-    <div id="rpOverallBand" style="margin-top:12px; padding:11px 14px; border-radius:8px; background:#ECFDF5; border:1px solid #A7F3D0; display:flex; justify-content:space-between; align-items:center;">
+    <div id="rpOverallBand" style="margin-top:10px; padding:9px 14px; border-radius:8px; background:#ECFDF5; border:1px solid #A7F3D0; display:flex; justify-content:space-between; align-items:center;">
       <span style="font-size:13px; color:#334155;">สรุปสถานะรวมของห้องน้ำจุดนี้</span>
       <span id="rpOverall" style="font-size:17px; font-weight:700; color:#059669;">ผ่านเกณฑ์</span>
     </div>
 
-    <div style="font-size:13px; font-weight:700; margin:14px 0 5px;">หมายเหตุ / รายละเอียดจุดที่ต้องแก้ไข</div>
-    <div id="rpRemarks" style="border:1px solid #CBD5E1; border-radius:8px; padding:10px 12px; font-size:13px; min-height:52px; color:#334155;">-</div>
+    <div style="font-size:13px; font-weight:700; margin:11px 0 5px;">หมายเหตุ / รายละเอียดจุดที่ต้องแก้ไข</div>
+    <div id="rpRemarks" style="border:1px solid #CBD5E1; border-radius:8px; padding:8px 12px; font-size:12.5px; min-height:40px; color:#334155;">-</div>
 
-    <div style="font-size:13px; font-weight:700; margin:14px 0 6px;">ภาพถ่ายประกอบ (<span id="rpPhotoCount">0</span> ภาพ)</div>
+    <div style="font-size:13px; font-weight:700; margin:11px 0 6px;">ภาพถ่ายประกอบ (<span id="rpPhotoCount">0</span> ภาพ)</div>
     <div id="rpPhotos" style="display:grid; grid-template-columns:repeat(3,1fr); gap:8px;"></div>
     </div>
   </div>
@@ -504,10 +505,17 @@ const CONFIG = {
     'นาย บริพัตร เพชรดี'
   ],
   ROOM_TYPES: ['ห้องน้ำชาย', 'ห้องน้ำหญิง', 'ผู้สูงอายุ/คนพิการ'],
+  /* รายการตรวจเช็ค — ต้องเรียงลำดับ key ให้ตรงกับ ITEM_FIELDS ใน Code.gs เสมอ
+     short = ชื่อย่อที่ใช้ในตารางประวัติ/รายงาน (เวอร์ชันก่อนหน้าไม่มีฟิลด์นี้
+             ทำให้คอลัมน์ "จุดที่ต้องแก้ไข" ในหน้าประวัติว่างเปล่าตลอด) */
   ITEMS: [
-    { key:'item1', label:'สภาพผนัง / แผ่นกั้น กระจก และอ่างล้างมือ', bad:'ไม่ปกติ ต้องแก้ไข' },
-    { key:'item2', label:'โถสุขภัณฑ์ และโถปัสสาวะ',                  bad:'ชำรุด ต้องแก้ไข' },
-    { key:'item3', label:'สภาพอุปกรณ์ / มุมอับภายในห้องน้ำ',          bad:'ชำรุด ต้องแก้ไข' }
+    { key:'item1', short:'ผนัง-กระจก-อ่างล้างมือ', label:'สภาพผนัง / แผ่นกั้น กระจก และอ่างล้างมือ', bad:'ไม่ปกติ ต้องแก้ไข' },
+    { key:'item2', short:'โถสุขภัณฑ์-โถปัสสาวะ',   label:'โถสุขภัณฑ์ และโถปัสสาวะ',                  bad:'ชำรุด ต้องแก้ไข' },
+    { key:'item3', short:'อุปกรณ์-มุมอับ',          label:'สภาพอุปกรณ์ / มุมอับภายในห้องน้ำ',          bad:'ชำรุด ต้องแก้ไข' },
+    { key:'item4', short:'ความสะอาดภายใน',          label:'ความสะอาดภายในห้องน้ำ',                    bad:'ไม่สะอาด ต้องแก้ไข' },
+    { key:'item5', short:'กลิ่น',                   label:'กลิ่นภายในห้องน้ำ',                        bad:'มีกลิ่น ต้องแก้ไข' },
+    { key:'item6', short:'ความสะอาดพื้น',           label:'ความสะอาดพื้นห้องน้ำ',                     bad:'ไม่สะอาด ต้องแก้ไข' },
+    { key:'item7', short:'ถังขยะ',                  label:'ถังขยะในห้องน้ำ',                          bad:'ไม่เรียบร้อย ต้องแก้ไข' }
   ],
   PHOTO_MIN: 4,
   PHOTO_MAX: 6,
@@ -823,7 +831,25 @@ function paintRoomTypes() {
 }
 
 function renderChecklist() {
-  $('checklistWrap').innerHTML = CONFIG.ITEMS.map((it, i) => `
+  // อัปเดตจำนวนข้อบนหัวข้อให้ตรงกับ CONFIG.ITEMS เสมอ กันตัวเลขค้างเมื่อเพิ่ม/ลดรายการตรวจ
+  const cnt = $('chkCount');
+  if (cnt) cnt.textContent = CONFIG.ITEMS.length;
+
+  /* ปุ่มลัด "ปกติทั้งหมด" — เมื่อรายการตรวจเพิ่มเป็น 7 ข้อ การกดทีละข้อบนมือถือใช้เวลานาน
+     จุดตรวจส่วนใหญ่ผลเป็นปกติ จึงให้กดครั้งเดียวแล้วค่อยแก้เฉพาะข้อที่มีปัญหา */
+  const quick = `
+    <div class="flex flex-wrap gap-2 mb-1">
+      <button type="button" id="btnAllOk"
+        class="flex-1 min-w-[140px] py-2.5 rounded-xl border-2 border-emerald-200 bg-emerald-50 text-pass text-sm font-medium">
+        ทำเครื่องหมาย “ปกติ” ทั้ง ${CONFIG.ITEMS.length} ข้อ
+      </button>
+      <button type="button" id="btnClearItems"
+        class="py-2.5 px-4 rounded-xl border-2 border-slate-200 bg-white text-slate-600 text-sm font-medium">
+        ล้างผลการตรวจ
+      </button>
+    </div>`;
+
+  $('checklistWrap').innerHTML = quick + CONFIG.ITEMS.map((it, i) => `
     <div class="border border-slate-200 rounded-xl p-3">
       <p class="text-sm font-medium mb-2">
         <span class="inline-flex w-6 h-6 rounded-full bg-brand text-white text-xs items-center justify-center mr-1.5">${i + 1}</span>
@@ -843,6 +869,21 @@ function renderChecklist() {
       </div>
     </div>`).join('');
   $('checklistWrap').querySelectorAll('.chk-item').forEach((el) => el.addEventListener('change', updateOverall));
+
+  const allOk = $('btnAllOk');
+  if (allOk) allOk.addEventListener('click', () => { setAllItems(CONFIG.OK); toast('success', 'ตั้งผลการตรวจเป็น “ปกติ” ทั้งหมดแล้ว'); });
+  const clr = $('btnClearItems');
+  if (clr) clr.addEventListener('click', () => { setAllItems(''); });
+}
+
+/** ตั้งค่าผลการตรวจทุกข้อพร้อมกัน ('' = ล้างคำตอบ) */
+function setAllItems(value) {
+  CONFIG.ITEMS.forEach((it) => {
+    document.querySelectorAll(`input[name="${it.key}"]`).forEach((el) => {
+      el.checked = (value !== '' && el.value === value);
+    });
+  });
+  updateOverall();
 }
 
 function getItemValues() {
@@ -1367,9 +1408,9 @@ function buildReportFromRecord(r) {
     const v = String(r[it.key] || '').trim();
     const ok = (v === CONFIG.OK);
     return `<tr>
-      <td style="border:1px solid #CBD5E1; padding:7px 10px; text-align:center;">${i + 1}</td>
-      <td style="border:1px solid #CBD5E1; padding:7px 10px;">${escapeHtml(it.label)}</td>
-      <td style="border:1px solid #CBD5E1; padding:7px 10px; text-align:center; color:${ok ? '#059669' : '#DC2626'}; font-weight:700;">${escapeHtml(v || '-')}</td>
+      <td style="border:1px solid #CBD5E1; padding:4.5px 10px; text-align:center;">${i + 1}</td>
+      <td style="border:1px solid #CBD5E1; padding:4.5px 10px;">${escapeHtml(it.label)}</td>
+      <td style="border:1px solid #CBD5E1; padding:4.5px 10px; text-align:center; color:${ok ? '#059669' : '#DC2626'}; font-weight:700;">${escapeHtml(v || '-')}</td>
     </tr>`;
   }).join('');
 
@@ -1509,10 +1550,15 @@ function closeHistory() {
  *   5-6 ภาพ  -> 3 คอลัมน์ 2 แถว
  * @return {{cols:number, height:number}}
  */
+/**
+ * ขนาดช่องภาพในใบรายงาน
+ * ปรับลดจากเดิม (210/185/150) เพราะตารางผลการตรวจเพิ่มจาก 3 เป็น 7 แถว
+ * ถ้าไม่ลด ใบรายงานจะสูงเกินกระดาษ A4 หนึ่งแผ่นและถูกย่อจนตัวหนังสือเล็กเกินอ่าน
+ */
 function photoGrid(count) {
-  if (count <= 2) return { cols: 2, height: 210 };
-  if (count <= 4) return { cols: 2, height: 185 };
-  return { cols: 3, height: 150 };
+  if (count <= 2) return { cols: 2, height: 186 };
+  if (count <= 4) return { cols: 2, height: 162 };
+  return { cols: 3, height: 126 };
 }
 
 /** สร้างบล็อกภาพถ่ายในใบรายงาน (ใช้ร่วมกันทั้งใบตอนบันทึกและใบย้อนหลัง) */
@@ -1541,9 +1587,9 @@ function buildReportSheet(payload) {
     const v = vals[i] || '-';
     const ok = v === CONFIG.OK;
     return `<tr>
-      <td style="border:1px solid #CBD5E1; padding:7px 10px; text-align:center;">${i + 1}</td>
-      <td style="border:1px solid #CBD5E1; padding:7px 10px;">${escapeHtml(it.label)}</td>
-      <td style="border:1px solid #CBD5E1; padding:7px 10px; text-align:center; color:${ok ? '#059669' : '#DC2626'}; font-weight:700;">${escapeHtml(ok ? 'ปกติ' : it.bad)}</td>
+      <td style="border:1px solid #CBD5E1; padding:4.5px 10px; text-align:center;">${i + 1}</td>
+      <td style="border:1px solid #CBD5E1; padding:4.5px 10px;">${escapeHtml(it.label)}</td>
+      <td style="border:1px solid #CBD5E1; padding:4.5px 10px; text-align:center; color:${ok ? '#059669' : '#DC2626'}; font-weight:700;">${escapeHtml(ok ? 'ปกติ' : it.bad)}</td>
     </tr>`;
   }).join('');
 
